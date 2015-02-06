@@ -1,5 +1,7 @@
 *.class
 
+*~
+
 # ignore  all in /test
 /test/*
 
