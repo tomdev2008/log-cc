@@ -23,10 +23,10 @@ public class RunAllJob {
 
 		// hdfs输入
 		String input = "hdfs://master1:9000/jlog/";
-		// hdfs输出-输入
+		// hdfs输出
 		String ClickPathOut = "hdfs://master1:9000/alog/ClickPath";
 
-		// 输出到mongo
+		//From ClickPath To mongo
 		String nodes = "mongodb://localhost:27017/jiaodian.nodes";
 		String keywords = "mongodb://localhost:27017/jiaodian.keywords";
 		String links = "mongodb://localhost:27017/jiaodian.links";

@@ -34,9 +34,7 @@ public class ClassifyTransactionPath {
 				throws IOException, InterruptedException {
 			// 查看是否有询盘行为
 
-			
-			
-			
+						
 			// 针对一条路径 拆分
 			String[] urlArray = value.toString().split("~");
 

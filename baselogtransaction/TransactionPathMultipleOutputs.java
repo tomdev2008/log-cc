@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -15,6 +17,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 /**
@@ -24,8 +27,10 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
  * 
  * @author hadoop
  */
-public class TransactionPath {
-
+public class TransactionPathMultipleOutputs {
+	
+	static String regexInquiry = "made-in-china.com(/sendInquiry/|/inquiry.do|/inquirybasket|/inquiry-basket|/inquiryResult.do)";
+	
 	public static class Map extends Mapper<Object, Text, Text, Text> {
 
 		private Text keyOut = new Text();
@@ -62,7 +67,19 @@ public class TransactionPath {
 	}// Map
 
 	public static class Reduce extends Reducer<Text, Text, Text, Text> {
-
+		 private  MultipleOutputs<Text, Text> mos;
+		@Override
+	    protected void setup(Context context) 
+	                   throws IOException, InterruptedException {
+	      super.setup(context);
+	      mos = new MultipleOutputs<Text, Text>(context);
+	    }
+		@Override
+		   protected void cleanup(Context context) 
+		                  throws IOException, InterruptedException {
+		       super.cleanup(context);
+		       mos.close();
+		   }    
 		public void reduce(Text key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
 
@@ -107,8 +124,15 @@ public class TransactionPath {
 			ArrayList<String> TransactionL = new ArrayList<String>();
 			TransactionL = pG.DFS();
 			// 输出事务
-			for (int m = 0; m < TransactionL.size(); m++) {
-				context.write(new Text(TransactionL.get(m)), null);
+	
+			for (int i = 0; i < TransactionL.size(); i++) {
+		//判断是否有询盘行为
+			Matcher m1 = Pattern.compile(regexInquiry).matcher(TransactionL.get(i));
+				if (m1.find()) {	
+				mos.write(new Text(TransactionL.get(i)), null, "InquiryPath/Inquiry");
+				}else{
+				mos.write(new Text(TransactionL.get(i)), null, "NoInquiryPath/NoInquiry");
+				}
 			}
 		}// reduce
 	}// Reduce
@@ -121,7 +145,7 @@ public class TransactionPath {
 		@SuppressWarnings("deprecation")
 		Job job = new Job(conf, "TransactionPath");
 		// 设置处理类
-		job.setJarByClass(TransactionPath.class);
+		job.setJarByClass(TransactionPathMultipleOutputs.class);
 		job.setMapperClass(Map.class);
 		job.setReducerClass(Reduce.class);
 
@@ -136,7 +160,9 @@ public class TransactionPath {
 
 		FileInputFormat.addInputPath(job, new Path(input));
 		FileOutputFormat.setOutputPath(job, new Path(output));
-
+		MultipleOutputs.addNamedOutput(job, "MultiFileOut",
+				TextOutputFormat.class, Text.class, Text.class);
+		
 		return job.waitForCompletion(true) ? 0 : 1;
 	}
 
@@ -144,9 +170,9 @@ public class TransactionPath {
 
 		long startTime = System.currentTimeMillis();
 		String input = "hdfs://master1:9000/jlog/";
-		String output = "hdfs://master1:9000/alog/TransactionPath";
+		String output = "hdfs://master1:9000/alog1/";
 
-		int exitCode = TransactionPath.run(input, output);
+		int exitCode = TransactionPathMultipleOutputs.run(input, output);
 		if (exitCode == 0) {
 			System.out.println("Done!");
 		} else {
